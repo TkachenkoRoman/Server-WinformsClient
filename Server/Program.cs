@@ -14,14 +14,30 @@ namespace Server
 {
     class Program
     {
+        private static ManualResetEvent _quitEvent = new ManualResetEvent(false);
+
         static void Main(string[] args)
         {
+            var port = 8080;
             Globals.Delay = 400;
-            string url = "http://*:8080";
+
+            if (args.Length > 0)
+            {
+                int.TryParse(args[0], out port);
+            }
+
+            string url = string.Format("http://*:{0}", port);
+
+            Console.CancelKeyPress += (sender, eArgs) =>
+            {
+                _quitEvent.Set();
+                eArgs.Cancel = true;
+            };
+
             using (WebApp.Start(url))
             {
                 Console.WriteLine("Server running on {0}", url);
-                Console.ReadLine();
+                _quitEvent.WaitOne(); 
             }
         }
     }
@@ -62,9 +78,10 @@ namespace Server
 
         public override Task OnConnected()
         {
+            Task t = base.OnConnected();
             Console.WriteLine("Client connected: " + Context.ConnectionId);
             Clients.All.setDelay(Globals.Delay);
-            return base.OnConnected();
+            return t;
         }
         public override Task OnDisconnected(bool stopCalled)
         {
